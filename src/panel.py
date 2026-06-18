@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 
+import cairo
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gtk
@@ -22,7 +23,6 @@ window {
     background: rgba(255, 255, 255, 0.94);
     border: 1px solid rgba(32, 36, 42, 0.16);
     border-radius: 18px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 .brand {
     color: #ffffff;
@@ -54,7 +54,6 @@ window {
     background: rgba(34, 39, 46, 0.94);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 18px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 .brand {
     color: #ffffff;
@@ -85,22 +84,23 @@ class FloatingPanel(Gtk.Window):
         self.config = UserConfig.load()
 
         self.set_app_paintable(True)
+        self._enable_transparent_window()
         self.set_decorated(False)
         self.set_keep_above(True)
         self.set_skip_taskbar_hint(True)
         self.set_skip_pager_hint(True)
         self.set_resizable(False)
-        self.set_border_width(6)
+        self.set_border_width(0)
         self.set_opacity(self.config.floating_opacity)
         self._apply_theme()
         self._apply_css()
 
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         box.get_style_context().add_class("panel")
-        box.set_margin_start(2)
-        box.set_margin_end(2)
-        box.set_margin_top(2)
-        box.set_margin_bottom(2)
+        box.set_margin_start(0)
+        box.set_margin_end(0)
+        box.set_margin_top(0)
+        box.set_margin_bottom(0)
         self.add(box)
 
         label = Gtk.Label(label="拼")
@@ -125,6 +125,21 @@ class FloatingPanel(Gtk.Window):
         self.connect("button-press-event", self._on_press)
         self.connect("button-release-event", self._on_release)
         self.connect("destroy", Gtk.main_quit)
+
+    def _enable_transparent_window(self):
+        screen = self.get_screen()
+        if screen and screen.is_composited():
+            visual = screen.get_rgba_visual()
+            if visual:
+                self.set_visual(visual)
+        self.connect("draw", self._draw_transparent_background)
+
+    def _draw_transparent_background(self, _widget, cr):
+        cr.set_operator(cairo.OPERATOR_SOURCE)
+        cr.set_source_rgba(0, 0, 0, 0)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
+        return False
 
     def _apply_theme(self):
         settings = Gtk.Settings.get_default()
