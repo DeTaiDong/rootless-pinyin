@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST="$HOME/.local/share/ibus-pypinyin"
 BIN_DIR="$HOME/.local/bin"
 CONFIG_CMD="$BIN_DIR/rootless-pinyin-config"
+PANEL_CMD="$BIN_DIR/rootless-pinyin-panel"
 USER_SERVICE="$HOME/.local/share/dbus-1/services/org.freedesktop.IBus.service"
 USER_SERVICE_BACKUP="$USER_SERVICE.pre-pypinyin"
 
@@ -41,9 +42,10 @@ cp "$SCRIPT_DIR/src/engine.py" \
    "$SCRIPT_DIR/src/config.py" \
    "$SCRIPT_DIR/src/configure.py" \
    "$SCRIPT_DIR/src/configure_gui.py" \
+   "$SCRIPT_DIR/src/panel.py" \
    "$DEST/"
 chmod +x "$DEST/engine.py"
-chmod +x "$DEST/configure.py" "$DEST/configure_gui.py"
+chmod +x "$DEST/configure.py" "$DEST/configure_gui.py" "$DEST/panel.py"
 
 echo "==> Installing config command to $CONFIG_CMD"
 mkdir -p "$BIN_DIR"
@@ -57,6 +59,14 @@ fi
 exec python3 "$DEST/configure_gui.py" "\$@"
 EOF
 chmod +x "$CONFIG_CMD"
+
+echo "==> Installing floating panel command to $PANEL_CMD"
+cat > "$PANEL_CMD" <<EOF
+#!/bin/bash
+set -euo pipefail
+exec python3 "$DEST/panel.py" "\$@"
+EOF
+chmod +x "$PANEL_CMD"
 
 echo "==> Registering IBus component"
 mkdir -p "$HOME/.local/share/ibus/component"

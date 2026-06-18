@@ -6,11 +6,12 @@ DEST="$HOME/.local/share/ibus-pypinyin"
 COMPONENT="$HOME/.local/share/ibus/component/pypinyin.xml"
 ENV_FILE="$HOME/.config/environment.d/ibus-pypinyin.conf"
 CONFIG_CMD="$HOME/.local/bin/rootless-pinyin-config"
+PANEL_CMD="$HOME/.local/bin/rootless-pinyin-panel"
 USER_SERVICE="$HOME/.local/share/dbus-1/services/org.freedesktop.IBus.service"
 USER_SERVICE_BACKUP="$USER_SERVICE.pre-pypinyin"
 
 echo "==> Removing installed files"
-rm -rf "$DEST" "$COMPONENT" "$ENV_FILE" "$CONFIG_CMD"
+rm -rf "$DEST" "$COMPONENT" "$ENV_FILE" "$CONFIG_CMD" "$PANEL_CMD"
 
 echo "==> Restoring D-Bus service override"
 if [ -f "$USER_SERVICE_BACKUP" ]; then

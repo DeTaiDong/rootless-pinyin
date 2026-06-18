@@ -30,7 +30,7 @@ def load_parser():
     parser = configparser.ConfigParser()
     parser.optionxform = str
     parser.read(CONFIG_PATH)
-    for section in ("general", "fuzzy", "phrases"):
+    for section in ("general", "fuzzy", "floating", "phrases"):
         if not parser.has_section(section):
             parser.add_section(section)
     return parser
@@ -63,6 +63,7 @@ class SettingsWindow(Gtk.Window):
         notebook.append_page(self._general_page(), Gtk.Label(label="常规"))
         notebook.append_page(self._fuzzy_page(), Gtk.Label(label="模糊音"))
         notebook.append_page(self._phrases_page(), Gtk.Label(label="自定义短语"))
+        notebook.append_page(self._floating_page(), Gtk.Label(label="悬浮框"))
 
         hint = Gtk.Label(
             label="保存后切换一下输入法，或重新运行 update 刷新 IBus。",
@@ -139,6 +140,37 @@ class SettingsWindow(Gtk.Window):
 
         note = Gtk.Label(
             label="提示：候选框外观由 IBus/桌面主题控制，这里主要调整设置窗口主题。",
+            xalign=0,
+        )
+        note.set_line_wrap(True)
+        box.pack_start(note, False, False, 0)
+
+        return box
+
+    def _floating_page(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, border_width=12)
+
+        self.panel_theme_combo = Gtk.ComboBoxText()
+        for key, label in (("system", "跟随系统"), ("light", "白天"), ("dark", "夜间")):
+            self.panel_theme_combo.append(key, label)
+        self.panel_theme_combo.set_active_id(
+            self.parser.get("floating", "theme", fallback="system")
+        )
+
+        self.opacity_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.3, 1.0, 0.05)
+        self.opacity_scale.set_value(self.parser.getfloat("floating", "opacity", fallback=0.9))
+        self.opacity_scale.set_digits(2)
+        self.opacity_scale.set_hexpand(True)
+
+        grid = Gtk.Grid(column_spacing=12, row_spacing=10)
+        box.pack_start(grid, False, False, 0)
+        grid.attach(Gtk.Label(label="悬浮框主题", xalign=0), 0, 0, 1, 1)
+        grid.attach(self.panel_theme_combo, 1, 0, 1, 1)
+        grid.attach(Gtk.Label(label="透明度", xalign=0), 0, 1, 1, 1)
+        grid.attach(self.opacity_scale, 1, 1, 1, 1)
+
+        note = Gtk.Label(
+            label="运行 rootless-pinyin-panel 打开悬浮框。它是可选功能，不会默认自启动。",
             xalign=0,
         )
         note.set_line_wrap(True)
@@ -283,6 +315,9 @@ class SettingsWindow(Gtk.Window):
         pairs = [key for key, check in self.fuzzy_checks.items() if check.get_active()]
         self.parser.set("fuzzy", "pairs", ",".join(pairs))
         self.parser.set("fuzzy", "max_variants", str(self.fuzzy_spin.get_value_as_int()))
+
+        self.parser.set("floating", "theme", self.panel_theme_combo.get_active_id() or "system")
+        self.parser.set("floating", "opacity", "%.2f" % self.opacity_scale.get_value())
 
         self.parser.remove_section("phrases")
         self.parser.add_section("phrases")

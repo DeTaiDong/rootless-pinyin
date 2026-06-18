@@ -21,6 +21,10 @@ enabled = false
 pairs = z_zh,c_ch,s_sh,l_n,f_h,en_eng,in_ing
 max_variants = 8
 
+[floating]
+opacity = 0.9
+theme = system
+
 [phrases]
 # Custom phrases. Left side is pinyin or shortcode, right side is the text.
 # Examples:
@@ -66,6 +70,8 @@ class UserConfig(object):
         self.fuzzy_pairs = []
         self.max_fuzzy_variants = 8
         self.phrases = {}
+        self.floating_opacity = 0.9
+        self.floating_theme = "system"
 
     @classmethod
     def load(cls):
@@ -103,6 +109,12 @@ class UserConfig(object):
                 for key, value in parser.items("phrases")
                 if key.strip() and value.strip()
             }
+
+        config.floating_opacity = parser.getfloat("floating", "opacity", fallback=0.9)
+        config.floating_opacity = min(1.0, max(0.3, config.floating_opacity))
+        config.floating_theme = parser.get("floating", "theme", fallback="system")
+        if config.floating_theme not in ("system", "light", "dark"):
+            config.floating_theme = "system"
 
         return config
 

@@ -8,7 +8,7 @@ INSTALL_DIR="${ROOTLESS_PINYIN_SRC_DIR:-$HOME/.local/share/rootless-pinyin-src}"
 
 usage() {
     cat <<EOF
-Usage: bootstrap.sh [install|--update|--uninstall|--configure|--configure-gui]
+Usage: bootstrap.sh [install|--update|--uninstall|--configure|--configure-gui|--panel]
 
 Environment variables:
   ROOTLESS_PINYIN_REPO     Git repository URL. Default: $REPO_URL
@@ -135,6 +135,16 @@ run_configure_gui() {
     fi
 }
 
+run_panel() {
+    ensure_source
+    if [ -x "$INSTALL_DIR/src/panel.py" ]; then
+        python3 "$INSTALL_DIR/src/panel.py"
+    else
+        echo "ERROR: panel.py not found at $INSTALL_DIR." >&2
+        exit 1
+    fi
+}
+
 case "${1:-install}" in
     install)
         run_install
@@ -150,6 +160,9 @@ case "${1:-install}" in
         ;;
     --configure-gui|configure-gui)
         run_configure_gui
+        ;;
+    --panel|panel)
+        run_panel
         ;;
     -h|--help|help)
         usage
