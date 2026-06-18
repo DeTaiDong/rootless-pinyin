@@ -49,6 +49,12 @@ rootless-pinyin-config
 ~/.local/bin/rootless-pinyin-config
 ```
 
+如果想让短命令永久可用，可以把下面这行加入 `~/.bashrc`：
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
 设置窗口可以调整：
 
 - 模糊音
@@ -83,6 +89,12 @@ rootless-pinyin-panel
 ```
 
 它会显示一个小窗口，点击“设置”可以打开配置页。这个功能默认不会自启动。
+
+如果命令找不到：
+
+```bash
+~/.local/bin/rootless-pinyin-panel
+```
 
 ## 更新
 

@@ -170,3 +170,12 @@ else
     echo "    If 'Pinyin (libpinyin, no-root)' is not visible yet, log out and"
     echo "    log back in once so ibus-daemon and the D-Bus session bus refresh."
 fi
+case ":$PATH:" in
+    *":$BIN_DIR:"*) ;;
+    *)
+        echo
+        echo "    Note: $BIN_DIR is not in your PATH."
+        echo "    Open settings with: $CONFIG_CMD"
+        echo "    Open panel with:    $PANEL_CMD"
+        ;;
+esac
