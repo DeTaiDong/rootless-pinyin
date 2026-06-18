@@ -158,7 +158,6 @@ class PyPinyinEngine(IBus.Engine):
         if parent_destroy:
             parent_destroy()
 
-
 def main():
     mainloop = GLib.MainLoop()
     bus = IBus.Bus()
