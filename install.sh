@@ -4,6 +4,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST="$HOME/.local/share/ibus-pypinyin"
+BIN_DIR="$HOME/.local/bin"
+CONFIG_CMD="$BIN_DIR/rootless-pinyin-config"
 USER_SERVICE="$HOME/.local/share/dbus-1/services/org.freedesktop.IBus.service"
 USER_SERVICE_BACKUP="$USER_SERVICE.pre-pypinyin"
 
@@ -34,8 +36,27 @@ fi
 
 echo "==> Installing engine files to $DEST"
 mkdir -p "$DEST"
-cp "$SCRIPT_DIR/src/engine.py" "$SCRIPT_DIR/src/pinyin_lib.py" "$SCRIPT_DIR/src/config.py" "$DEST/"
+cp "$SCRIPT_DIR/src/engine.py" \
+   "$SCRIPT_DIR/src/pinyin_lib.py" \
+   "$SCRIPT_DIR/src/config.py" \
+   "$SCRIPT_DIR/src/configure.py" \
+   "$SCRIPT_DIR/src/configure_gui.py" \
+   "$DEST/"
 chmod +x "$DEST/engine.py"
+chmod +x "$DEST/configure.py" "$DEST/configure_gui.py"
+
+echo "==> Installing config command to $CONFIG_CMD"
+mkdir -p "$BIN_DIR"
+cat > "$CONFIG_CMD" <<EOF
+#!/bin/bash
+set -euo pipefail
+if [ "\${1:-}" = "--cli" ]; then
+    shift
+    exec python3 "$DEST/configure.py" "\$@"
+fi
+exec python3 "$DEST/configure_gui.py" "\$@"
+EOF
+chmod +x "$CONFIG_CMD"
 
 echo "==> Registering IBus component"
 mkdir -p "$HOME/.local/share/ibus/component"

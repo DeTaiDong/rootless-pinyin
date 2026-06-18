@@ -53,33 +53,40 @@ Settings -> Keyboard -> Input Sources -> + -> Chinese -> Pinyin (libpinyin, no-r
 打开图形设置窗口：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --configure-gui
+rootless-pinyin-config
 ```
 
 设置窗口可以调整模糊音、中文标点、Shift 中英切换、候选数量、窗口主题，
 也可以添加或删除自定义短语。
 
+如果命令找不到，先重新打开终端，或直接运行：
+
+```bash
+~/.local/bin/rootless-pinyin-config
+```
+
 也可以使用终端交互式配置：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --configure
+rootless-pinyin-config --cli
 ```
 
 也可以直接用命令：
 
 ```bash
 # 开启/关闭模糊音
-~/.local/share/rootless-pinyin-src/configure.sh fuzzy on
-~/.local/share/rootless-pinyin-src/configure.sh fuzzy off
+rootless-pinyin-config --cli fuzzy on
+rootless-pinyin-config --cli fuzzy off
 
 # 添加/删除自定义短语
-~/.local/share/rootless-pinyin-src/configure.sh phrase add email your.name@example.com
-~/.local/share/rootless-pinyin-src/configure.sh phrase remove email
+rootless-pinyin-config --cli phrase add email your.name@example.com
+rootless-pinyin-config --cli phrase remove email
 ```
 
 如果不想记本地路径，也可以用 bootstrap：
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --configure-gui
 curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --configure fuzzy on
 curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --configure phrase add email your.name@example.com
 ```

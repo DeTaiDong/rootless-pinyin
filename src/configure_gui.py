@@ -218,7 +218,43 @@ class SettingsWindow(Gtk.Window):
         self.phrase_store[path][column] = text.strip()
 
     def _add_phrase(self, _button):
-        self.phrase_store.append(["", ""])
+        dialog = Gtk.Dialog(
+            title="添加自定义短语",
+            transient_for=self,
+            flags=0,
+        )
+        dialog.add_buttons("取消", Gtk.ResponseType.CANCEL, "添加", Gtk.ResponseType.OK)
+        dialog.set_default_response(Gtk.ResponseType.OK)
+
+        box = dialog.get_content_area()
+        grid = Gtk.Grid(column_spacing=10, row_spacing=10, margin=12)
+        box.add(grid)
+
+        key_entry = Gtk.Entry()
+        key_entry.set_placeholder_text("例如：email")
+        text_entry = Gtk.Entry()
+        text_entry.set_placeholder_text("例如：your.name@example.com")
+        text_entry.set_activates_default(True)
+
+        grid.attach(Gtk.Label(label="短码", xalign=0), 0, 0, 1, 1)
+        grid.attach(key_entry, 1, 0, 1, 1)
+        grid.attach(Gtk.Label(label="内容", xalign=0), 0, 1, 1, 1)
+        grid.attach(text_entry, 1, 1, 1, 1)
+
+        dialog.show_all()
+        if dialog.run() == Gtk.ResponseType.OK:
+            key = key_entry.get_text().strip().lower()
+            value = text_entry.get_text().strip()
+            if key and value:
+                self._upsert_phrase(key, value)
+        dialog.destroy()
+
+    def _upsert_phrase(self, key, value):
+        for row in self.phrase_store:
+            if row[0].strip().lower() == key:
+                row[1] = value
+                return
+        self.phrase_store.append([key, value])
 
     def _remove_phrase(self, _button):
         selection = self.phrase_view.get_selection()
