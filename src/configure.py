@@ -57,7 +57,13 @@ def _show():
 
 def _prompt(question, default=""):
     suffix = " [%s]" % default if default else ""
-    value = input(question + suffix + ": ").strip()
+    try:
+        value = input(question + suffix + ": ").strip()
+    except EOFError:
+        raise SystemExit(
+            "No interactive input available. Run configure.sh from a terminal, "
+            "or use: configure.sh fuzzy on"
+        )
     return value or default
 
 
@@ -76,10 +82,16 @@ def _interactive():
     print()
     print("Add custom phrases. Press Enter on an empty key to finish.")
     while True:
-        key = input("Phrase key: ").strip().lower()
+        try:
+            key = input("Phrase key: ").strip().lower()
+        except EOFError:
+            break
         if not key:
             break
-        value = input("Phrase text: ").strip()
+        try:
+            value = input("Phrase text: ").strip()
+        except EOFError:
+            value = ""
         if value:
             parser.set("phrases", key, value)
 

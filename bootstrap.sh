@@ -114,7 +114,11 @@ run_uninstall() {
 run_configure() {
     ensure_source
     if [ -x "$INSTALL_DIR/configure.sh" ]; then
-        "$INSTALL_DIR/configure.sh" "${@:2}"
+        if [ "$#" -eq 1 ] && [ ! -t 0 ] && [ -r /dev/tty ]; then
+            "$INSTALL_DIR/configure.sh" </dev/tty
+        else
+            "$INSTALL_DIR/configure.sh" "${@:2}"
+        fi
     else
         echo "ERROR: configure.sh not found at $INSTALL_DIR." >&2
         exit 1
