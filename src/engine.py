@@ -280,14 +280,17 @@ class PyPinyinEngine(IBus.Engine):
             self._select_candidate(keyval - IBus.KEY_1)
             return True
 
-        if keyval in (IBus.KEY_Page_Down, IBus.KEY_KP_Page_Down) or self._key_char(keyval) == "=":
+        if keyval in (
+            IBus.KEY_Page_Down, IBus.KEY_KP_Page_Down,
+            IBus.KEY_Down, IBus.KEY_Right, IBus.KEY_KP_Down, IBus.KEY_KP_Right,
+        ) or self._key_char(keyval) == "=":
             return self._page_down() if self.buffer else False
 
-        if keyval in (IBus.KEY_Page_Up, IBus.KEY_KP_Page_Up) or self._key_char(keyval) == "-":
+        if keyval in (
+            IBus.KEY_Page_Up, IBus.KEY_KP_Page_Up,
+            IBus.KEY_Up, IBus.KEY_Left, IBus.KEY_KP_Up, IBus.KEY_KP_Left,
+        ) or self._key_char(keyval) == "-":
             return self._page_up() if self.buffer else False
-
-        if keyval in (IBus.KEY_Up, IBus.KEY_Down):
-            return bool(self.buffer)
 
         if self.buffer:
             self._commit_best_and_reset()
