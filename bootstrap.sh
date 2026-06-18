@@ -8,7 +8,7 @@ INSTALL_DIR="${ROOTLESS_PINYIN_SRC_DIR:-$HOME/.local/share/rootless-pinyin-src}"
 
 usage() {
     cat <<EOF
-Usage: bootstrap.sh [install|--update|--uninstall]
+Usage: bootstrap.sh [install|--update|--uninstall|--configure]
 
 Environment variables:
   ROOTLESS_PINYIN_REPO     Git repository URL. Default: $REPO_URL
@@ -111,6 +111,16 @@ run_uninstall() {
     fi
 }
 
+run_configure() {
+    ensure_source
+    if [ -x "$INSTALL_DIR/configure.sh" ]; then
+        "$INSTALL_DIR/configure.sh" "${@:2}"
+    else
+        echo "ERROR: configure.sh not found at $INSTALL_DIR." >&2
+        exit 1
+    fi
+}
+
 case "${1:-install}" in
     install)
         run_install
@@ -120,6 +130,9 @@ case "${1:-install}" in
         ;;
     --uninstall|uninstall)
         run_uninstall
+        ;;
+    --configure|configure)
+        run_configure "$@"
         ;;
     -h|--help|help)
         usage
