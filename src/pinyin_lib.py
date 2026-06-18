@@ -173,8 +173,7 @@ class PinyinSession(object):
             if not _lib.pinyin_get_candidate_string(self._instance, cand_ptr, byref(s)):
                 continue
             text = s.value.decode("utf-8") if s.value else ""
-            if s.value:
-                _glib.g_free(cast(s, c_void_p))
+            # Candidate strings are owned by libpinyin on some releases.
             out.append((text, cand_ptr))
         return out
 
