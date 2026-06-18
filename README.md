@@ -14,13 +14,19 @@ required.
 
 Check these before installing:
 
-- `/usr/lib64/libpinyin.so.13` and `/usr/lib64/libpinyin/data/` already
-  exist on the machine:
+- `libpinyin` and its data files already exist on the machine:
   ```bash
   rpm -qa | grep libpinyin
   ```
   If missing, this won't work until an admin installs `libpinyin` and
   `libpinyin-data` (or properly installs `ibus-libpinyin`).
+  The installer checks common library/data locations automatically. If your
+  distro uses a custom path, run install with:
+  ```bash
+  LIBPINYIN_PATH=/path/to/libpinyin.so \
+  LIBPINYIN_DATA_DIR=/path/to/libpinyin/data \
+  ./install.sh
+  ```
 - IBus + PyGObject bindings are present:
   ```bash
   python3 -c "import gi; gi.require_version('IBus','1.0'); from gi.repository import IBus"
@@ -60,14 +66,19 @@ After logging back in:
   `~/.local/share/ibus/component/pypinyin.xml`
 - Sets `IBUS_COMPONENT_PATH` via
   `~/.config/environment.d/ibus-pypinyin.conf`, because this distro's
-  `ibus-daemon` does not scan the user component directory by default
+  `ibus-daemon` does not scan the user component directory by default. If
+  `LIBPINYIN_PATH` or `LIBPINYIN_DATA_DIR` were provided during install,
+  they are persisted there too.
 - Overrides the `org.freedesktop.IBus` D-Bus session service at
   `~/.local/share/dbus-1/services/` to add `--cache=refresh`, since the
   default "auto" cache mode can keep serving a stale component registry
-  that doesn't include user-added engines
+  that doesn't include user-added engines. If you already had a user-level
+  override, `install.sh` backs it up as
+  `org.freedesktop.IBus.service.pre-pypinyin`.
 - Adds `('ibus', 'pypinyin')` to your GNOME input source list
   (`org.gnome.desktop.input-sources`), without touching your existing
-  sources
+  sources. On non-GNOME sessions, this step is skipped and you can add the
+  engine manually.
 
 ## Why a relogin is needed
 
@@ -88,20 +99,19 @@ without any further action.
 - No candidates while typing, or the engine doesn't seem to start → check
   `~/.local/share/ibus-pypinyin/engine.py` is executable, and rerun the
   PyGObject/IBus check above.
-- Garbled or missing Chinese candidates → confirm
-  `/usr/lib64/libpinyin/data/*.bin` exist and are world-readable.
+- Garbled or missing Chinese candidates → confirm the libpinyin data
+  directory contains readable `*.bin` files. For custom installs, set
+  `LIBPINYIN_DATA_DIR` before running `install.sh`.
 
 ## Uninstall
 
 ```bash
-rm -rf ~/.local/share/ibus-pypinyin \
-       ~/.local/share/ibus/component/pypinyin.xml \
-       ~/.config/environment.d/ibus-pypinyin.conf \
-       ~/.local/share/dbus-1/services/org.freedesktop.IBus.service
+./uninstall.sh
 ```
 
-Then remove "Pinyin (libpinyin, no-root)" from Settings → Keyboard → Input
-Sources, and log out/in.
+Then log out/in. On GNOME, the script also removes `('ibus', 'pypinyin')`
+from your input sources. If a pre-existing user D-Bus service override was
+backed up during install, it is restored.
 
 ## Limitations
 

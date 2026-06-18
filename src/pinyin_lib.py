@@ -5,13 +5,64 @@ libpinyin source tree); the option bitmask values come from pinyin_custom2.h.
 """
 
 import ctypes
+import ctypes.util
+import os
 from ctypes import (
     c_char_p, c_void_p, c_int, c_uint, c_uint8, c_size_t, c_bool,
     POINTER, byref, cast,
 )
 
-LIBPINYIN_PATH = "/usr/lib64/libpinyin.so.13"
-SYSTEM_DATA_DIR = "/usr/lib64/libpinyin/data"
+LIBPINYIN_CANDIDATES = (
+    "/usr/lib64/libpinyin.so.13",
+    "/usr/lib/libpinyin.so.13",
+    "/usr/lib/x86_64-linux-gnu/libpinyin.so.13",
+)
+DATA_DIR_CANDIDATES = (
+    "/usr/lib64/libpinyin/data",
+    "/usr/lib/libpinyin/data",
+    "/usr/lib/x86_64-linux-gnu/libpinyin/data",
+    "/usr/share/libpinyin/data",
+)
+
+
+def _first_existing_path(env_name, candidates, is_dir=False):
+    configured = os.environ.get(env_name)
+    if configured:
+        exists = os.path.isdir(configured) if is_dir else os.path.exists(configured)
+        if exists:
+            return configured
+        raise RuntimeError("%s points to a missing path: %s" % (env_name, configured))
+
+    for path in candidates:
+        exists = os.path.isdir(path) if is_dir else os.path.exists(path)
+        if exists:
+            return path
+    return None
+
+
+def _find_libpinyin():
+    path = _first_existing_path("LIBPINYIN_PATH", LIBPINYIN_CANDIDATES)
+    if path:
+        return path
+    found = ctypes.util.find_library("pinyin")
+    if found:
+        return found
+    raise RuntimeError(
+        "Could not find libpinyin. Set LIBPINYIN_PATH to the libpinyin shared library."
+    )
+
+
+def _find_data_dir():
+    path = _first_existing_path("LIBPINYIN_DATA_DIR", DATA_DIR_CANDIDATES, is_dir=True)
+    if path:
+        return path
+    raise RuntimeError(
+        "Could not find libpinyin data. Set LIBPINYIN_DATA_DIR to the data directory."
+    )
+
+
+LIBPINYIN_PATH = _find_libpinyin()
+SYSTEM_DATA_DIR = _find_data_dir()
 
 IS_PINYIN = 1 << 1
 PINYIN_INCOMPLETE = 1 << 3
@@ -84,6 +135,8 @@ class PinyinSession(object):
         _lib.pinyin_set_options(self._context, DEFAULT_OPTIONS)
         self._instance = _lib.pinyin_alloc_instance(self._context)
         if not self._instance:
+            _lib.pinyin_fini(self._context)
+            self._context = None
             raise RuntimeError("pinyin_alloc_instance failed")
 
     def parse(self, raw_pinyin):
@@ -120,6 +173,8 @@ class PinyinSession(object):
             if not _lib.pinyin_get_candidate_string(self._instance, cand_ptr, byref(s)):
                 continue
             text = s.value.decode("utf-8") if s.value else ""
+            if s.value:
+                _glib.g_free(cast(s, c_void_p))
             out.append((text, cand_ptr))
         return out
 
@@ -133,8 +188,13 @@ class PinyinSession(object):
         _lib.pinyin_reset(self._instance)
 
     def save(self):
-        _lib.pinyin_save(self._context)
+        if self._context:
+            _lib.pinyin_save(self._context)
 
     def close(self):
-        _lib.pinyin_free_instance(self._instance)
-        _lib.pinyin_fini(self._context)
+        if self._instance:
+            _lib.pinyin_free_instance(self._instance)
+            self._instance = None
+        if self._context:
+            _lib.pinyin_fini(self._context)
+            self._context = None

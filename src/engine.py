@@ -151,6 +151,13 @@ class PyPinyinEngine(IBus.Engine):
             self._reset_state()
         self.session.save()
 
+    def do_destroy(self):
+        self.session.save()
+        self.session.close()
+        parent_destroy = getattr(super(PyPinyinEngine, self), "do_destroy", None)
+        if parent_destroy:
+            parent_destroy()
+
 
 def main():
     mainloop = GLib.MainLoop()
