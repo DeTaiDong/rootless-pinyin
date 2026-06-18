@@ -64,7 +64,8 @@ echo "==> Installing floating panel command to $PANEL_CMD"
 cat > "$PANEL_CMD" <<EOF
 #!/bin/bash
 set -euo pipefail
-exec python3 "$DEST/panel.py" "\$@"
+nohup python3 "$DEST/panel.py" "\$@" >/dev/null 2>&1 &
+echo "rootless-pinyin panel started."
 EOF
 chmod +x "$PANEL_CMD"
 
