@@ -16,6 +16,8 @@ from gi.repository import GLib, IBus
 from pinyin_lib import PinyinSession
 
 USER_DATA_DIR = os.path.join(GLib.get_user_cache_dir(), "ibus-pypinyin")
+CANDIDATE_PAGE_SIZE = 9
+MAX_CANDIDATES = 90
 
 CHINESE_PUNCTUATION = {
     ",": "，",
@@ -43,6 +45,7 @@ class PyPinyinEngine(IBus.Engine):
         self.session = PinyinSession(USER_DATA_DIR)
         self.buffer = ""
         self.candidates = []
+        self.page = 0
         self.english_mode = False
         self._status_timeout = 0
         self._shift_pressed = False
@@ -66,6 +69,7 @@ class PyPinyinEngine(IBus.Engine):
         if not self.buffer or self.buffer.endswith("'"):
             return False
         self.buffer += "'"
+        self.page = 0
         self._refresh()
         return True
 
@@ -91,20 +95,54 @@ class PyPinyinEngine(IBus.Engine):
     def _refresh(self):
         self.session.parse(self.buffer)
         sentence = self.session.best_sentence() or self.buffer
-        self.candidates = [c for c in self.session.candidates(0, limit=9) if c[0] != sentence][:8]
+        self.candidates = [
+            c for c in self.session.candidates(0, limit=MAX_CANDIDATES)
+            if c[0] != sentence
+        ]
+        self.page = min(self.page, self._last_page())
+        self._update_candidates(sentence)
 
-        table = IBus.LookupTable.new(9, 0, True, True)
+    def _last_page(self):
+        total = 1 + len(self.candidates)
+        return max(0, (total - 1) // CANDIDATE_PAGE_SIZE)
+
+    def _candidate_for_display_index(self, idx):
+        absolute = self.page * CANDIDATE_PAGE_SIZE + idx
+        if absolute == 0:
+            return self.session.best_sentence() or self.buffer, None
+        real_idx = absolute - 1
+        if real_idx >= len(self.candidates):
+            return None
+        return self.candidates[real_idx]
+
+    def _update_candidates(self, sentence=None):
+        sentence = sentence or self.session.best_sentence() or self.buffer
+
+        table = IBus.LookupTable.new(CANDIDATE_PAGE_SIZE, 0, True, True)
         table.set_cursor_visible(False)
         for label in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
             table.append_label(IBus.Text.new_from_string(label))
-        table.append_candidate(IBus.Text.new_from_string(sentence))
-        for text, _ptr in self.candidates:
+
+        start = self.page * CANDIDATE_PAGE_SIZE
+        end = start + CANDIDATE_PAGE_SIZE
+        for absolute in range(start, end):
+            if absolute == 0:
+                text = sentence
+            else:
+                real_idx = absolute - 1
+                if real_idx >= len(self.candidates):
+                    break
+                text, _ptr = self.candidates[real_idx]
             table.append_candidate(IBus.Text.new_from_string(text))
         self.update_lookup_table(table, True)
 
         self.update_preedit_text(IBus.Text.new_from_string(self.buffer), len(self.buffer), True)
         self.update_auxiliary_text(
-            IBus.Text.new_from_string("%s  →  %s" % (self.buffer, sentence)), True
+            IBus.Text.new_from_string(
+                "%s  →  %s    %d/%d"
+                % (self.buffer, sentence, self.page + 1, self._last_page() + 1)
+            ),
+            True,
         )
 
     def _clear_ui(self):
@@ -115,9 +153,11 @@ class PyPinyinEngine(IBus.Engine):
         self.hide_lookup_table()
         self.hide_auxiliary_text()
         self.candidates = []
+        self.page = 0
 
     def _reset_state(self):
         self.buffer = ""
+        self.page = 0
         self.session.reset()
         self._clear_ui()
 
@@ -135,21 +175,36 @@ class PyPinyinEngine(IBus.Engine):
         self._reset_state()
 
     def _select_candidate(self, idx):
-        if idx == 0:
+        selected = self._candidate_for_display_index(idx)
+        if not selected:
+            return
+        text, ptr = selected
+        if ptr is None:
             self._commit_best_and_reset()
             return
-        real_idx = idx - 1
-        if real_idx >= len(self.candidates):
-            return
-        text, ptr = self.candidates[real_idx]
         new_offset = self.session.choose(0, ptr)
         self._commit(text)
         self.buffer = self.buffer[new_offset:]
         self.session.reset()
+        self.page = 0
         if self.buffer:
             self._refresh()
         else:
             self._clear_ui()
+
+    def _page_down(self):
+        if self.page >= self._last_page():
+            return True
+        self.page += 1
+        self._update_candidates()
+        return True
+
+    def _page_up(self):
+        if self.page <= 0:
+            return True
+        self.page -= 1
+        self._update_candidates()
+        return True
 
     def do_process_key_event(self, keyval, keycode, state):
         if self._is_shift(keyval):
@@ -182,6 +237,7 @@ class PyPinyinEngine(IBus.Engine):
 
         if self._is_letter(keyval):
             self.buffer += chr(keyval).lower()
+            self.page = 0
             self._refresh()
             return True
 
@@ -193,6 +249,7 @@ class PyPinyinEngine(IBus.Engine):
                 return False
             self.buffer = self.buffer[:-1]
             self.session.reset()
+            self.page = 0
             if self.buffer:
                 self._refresh()
             else:
@@ -223,7 +280,13 @@ class PyPinyinEngine(IBus.Engine):
             self._select_candidate(keyval - IBus.KEY_1)
             return True
 
-        if keyval in (IBus.KEY_Up, IBus.KEY_Down, IBus.KEY_Page_Up, IBus.KEY_Page_Down):
+        if keyval in (IBus.KEY_Page_Down, IBus.KEY_KP_Page_Down) or self._key_char(keyval) == "=":
+            return self._page_down() if self.buffer else False
+
+        if keyval in (IBus.KEY_Page_Up, IBus.KEY_KP_Page_Up) or self._key_char(keyval) == "-":
+            return self._page_up() if self.buffer else False
+
+        if keyval in (IBus.KEY_Up, IBus.KEY_Down):
             return bool(self.buffer)
 
         if self.buffer:
