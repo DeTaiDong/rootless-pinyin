@@ -50,7 +50,16 @@ Settings -> Keyboard -> Input Sources -> + -> Chinese -> Pinyin (libpinyin, no-r
 
 ### 配置和词库
 
-打开交互式配置：
+打开图形设置窗口：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --configure-gui
+```
+
+设置窗口可以调整模糊音、中文标点、Shift 中英切换、候选数量、窗口主题，
+也可以添加或删除自定义短语。
+
+也可以使用终端交互式配置：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --configure

@@ -14,6 +14,7 @@ max_candidates = 90
 shift_toggle_english = true
 chinese_punctuation = true
 enter_commits_raw = true
+theme = system
 
 [fuzzy]
 enabled = false
@@ -60,6 +61,7 @@ class UserConfig(object):
         self.shift_toggle_english = True
         self.chinese_punctuation = True
         self.enter_commits_raw = True
+        self.theme = "system"
         self.fuzzy_enabled = False
         self.fuzzy_pairs = []
         self.max_fuzzy_variants = 8
@@ -82,6 +84,9 @@ class UserConfig(object):
         config.shift_toggle_english = _bool(parser, "general", "shift_toggle_english", True)
         config.chinese_punctuation = _bool(parser, "general", "chinese_punctuation", True)
         config.enter_commits_raw = _bool(parser, "general", "enter_commits_raw", True)
+        config.theme = parser.get("general", "theme", fallback="system")
+        if config.theme not in ("system", "light", "dark"):
+            config.theme = "system"
         config.fuzzy_enabled = _bool(parser, "fuzzy", "enabled", False)
         config.max_fuzzy_variants = _int(parser, "fuzzy", "max_variants", 8, 0, 32)
 

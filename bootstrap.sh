@@ -8,7 +8,7 @@ INSTALL_DIR="${ROOTLESS_PINYIN_SRC_DIR:-$HOME/.local/share/rootless-pinyin-src}"
 
 usage() {
     cat <<EOF
-Usage: bootstrap.sh [install|--update|--uninstall|--configure]
+Usage: bootstrap.sh [install|--update|--uninstall|--configure|--configure-gui]
 
 Environment variables:
   ROOTLESS_PINYIN_REPO     Git repository URL. Default: $REPO_URL
@@ -125,6 +125,16 @@ run_configure() {
     fi
 }
 
+run_configure_gui() {
+    ensure_source
+    if [ -x "$INSTALL_DIR/configure-gui.sh" ]; then
+        "$INSTALL_DIR/configure-gui.sh"
+    else
+        echo "ERROR: configure-gui.sh not found at $INSTALL_DIR." >&2
+        exit 1
+    fi
+}
+
 case "${1:-install}" in
     install)
         run_install
@@ -137,6 +147,9 @@ case "${1:-install}" in
         ;;
     --configure|configure)
         run_configure "$@"
+        ;;
+    --configure-gui|configure-gui)
+        run_configure_gui
         ;;
     -h|--help|help)
         usage
