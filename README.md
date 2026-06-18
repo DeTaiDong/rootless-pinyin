@@ -118,13 +118,16 @@ cd rootless-pinyin
 - 如果你已经有自己的用户级 IBus D-Bus service，脚本会先备份成
   `org.freedesktop.IBus.service.pre-pypinyin`
 - 在 GNOME 环境下，自动把 `('ibus', 'pypinyin')` 加到输入源列表里
+- 尝试重启当前用户的 `ibus-daemon`，让输入法不注销也能立即出现在当前会话
 
-安装完成后，必须注销并重新登录一次。只重启终端通常不够，因为
-`ibus-daemon` 和当前 session 的 D-Bus broker 都会缓存启动时看到的输入法组件。
+安装完成后，脚本会自动尝试刷新当前 IBus 会话。大多数情况下不需要注销，直接
+用 `Super+Space` 或输入源菜单切换到 **Pinyin (libpinyin, no-root)** 即可。
+如果安装脚本提示当前会话还没识别到 pypinyin，或者设置里仍然看不到这个输入法，
+再注销并重新登录一次。
 
 ### 启用和使用
 
-重新登录后，打开：
+安装后，打开：
 
 ```text
 Settings -> Keyboard -> Input Sources
@@ -184,13 +187,21 @@ curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/boot
 卸载脚本会删除用户目录里的输入法文件、环境变量文件和 pypinyin 的 D-Bus
 覆盖配置。如果安装时备份过你原来的用户级 D-Bus service，也会自动恢复。
 
-卸载后同样建议注销并重新登录一次，让 IBus 和 session bus 刷新状态。
+卸载后如果输入源列表没有立刻刷新，建议注销并重新登录一次，让 IBus 和
+session bus 刷新状态。
 
 ### 常见问题
 
 `ibus engine pypinyin` 提示找不到输入法：
 
-先注销并重新登录。如果还是不行，确认这个文件存在：
+先尝试重启 IBus：
+
+```bash
+IBUS_COMPONENT_PATH="/usr/share/ibus/component:$HOME/.local/share/ibus/component" \
+ibus-daemon --replace --daemonize --xim --cache=refresh
+```
+
+如果还是不行，再注销并重新登录一次，然后确认这个文件存在：
 
 ```bash
 ls ~/.local/share/ibus/component/pypinyin.xml
@@ -286,8 +297,10 @@ cd rootless-pinyin
 ./install.sh
 ```
 
-Then log out and log back in once. This is required because `ibus-daemon` and
-the session D-Bus broker cache component/service state at startup.
+The installer tries to refresh the current IBus session automatically. In most
+cases, you can switch to **Pinyin (libpinyin, no-root)** immediately. If the
+engine is still not visible, log out and log back in once so `ibus-daemon` and
+the session D-Bus broker refresh their cached state.
 
 After logging back in, select **Pinyin (libpinyin, no-root)** from GNOME
 Settings -> Keyboard -> Input Sources, or switch to it with `Super+Space`.
@@ -308,6 +321,7 @@ and `Esc` to cancel.
 - Adds a user-level D-Bus service override for IBus with `--cache=refresh`
 - Backs up an existing user-level IBus D-Bus service if one exists
 - Adds `('ibus', 'pypinyin')` to GNOME input sources when possible
+- Tries to restart the current user's `ibus-daemon` for immediate use
 
 ### Uninstall
 
@@ -323,7 +337,8 @@ From a local checkout:
 ./uninstall.sh
 ```
 
-Then log out and log back in once.
+If the input source does not disappear immediately, log out and log back in
+once.
 
 ### Limitations
 

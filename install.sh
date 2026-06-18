@@ -111,8 +111,31 @@ else
     echo "    gsettings not found; add 'Pinyin (libpinyin, no-root)' manually."
 fi
 
+NEED_RELOGIN=1
+echo "==> Trying to refresh the current IBus session"
+if command -v ibus-daemon >/dev/null 2>&1; then
+    LIVE_COMPONENT_PATH="/usr/share/ibus/component:$HOME/.local/share/ibus/component"
+    if IBUS_COMPONENT_PATH="$LIVE_COMPONENT_PATH" ibus-daemon --replace --daemonize --xim --cache=refresh >/dev/null 2>&1; then
+        sleep 1
+        if command -v ibus >/dev/null 2>&1 && ibus list-engine 2>/dev/null | grep -q 'pypinyin'; then
+            echo "    IBus refreshed. pypinyin is available in this session."
+            NEED_RELOGIN=0
+        else
+            echo "    IBus restarted, but pypinyin is not visible yet."
+        fi
+    else
+        echo "    Could not restart ibus-daemon automatically."
+    fi
+else
+    echo "    ibus-daemon not found in PATH."
+fi
+
 echo
 echo "==> Install complete."
-echo "    Log out and log back in once (required so ibus-daemon and the D-Bus"
-echo "    session bus pick up the new files), then switch to 'Pinyin (libpinyin,"
-echo "    no-root)' via Super+Space or the input source indicator."
+if [ "$NEED_RELOGIN" -eq 0 ]; then
+    echo "    You can try switching to 'Pinyin (libpinyin, no-root)' now via"
+    echo "    Super+Space or the input source indicator."
+else
+    echo "    If 'Pinyin (libpinyin, no-root)' is not visible yet, log out and"
+    echo "    log back in once so ibus-daemon and the D-Bus session bus refresh."
+fi
