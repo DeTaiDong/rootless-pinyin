@@ -38,8 +38,9 @@ Settings -> Keyboard -> Input Sources -> + -> Chinese -> Pinyin (libpinyin, no-r
 
 输入方式：
 
-- 输入 `nihao`，按 `Space` 或 `Enter` 上屏。
-- 按数字键 `1` 到 `9` 选候选词。
+- 输入 `nihao`，按 `Space` 或 `1` 上屏最佳候选。
+- 按 `Enter` 上屏原始拼音，例如 `nihao`。
+- 按数字键 `2` 到 `9` 选其他候选词。
 - 轻按 `Shift` 在拼音模式和英文模式之间切换。
 - 拼音里可以用 `'` 分隔音节，例如 `xi'an`。
 - 中文模式下会自动输出常用中文标点，例如 `，。？！；：`。

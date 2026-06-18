@@ -130,6 +130,10 @@ class PyPinyinEngine(IBus.Engine):
         self.session.train()
         self._reset_state()
 
+    def _commit_raw_and_reset(self):
+        self._commit(self.buffer)
+        self._reset_state()
+
     def _select_candidate(self, idx):
         if idx == 0:
             self._commit_best_and_reset()
@@ -204,7 +208,7 @@ class PyPinyinEngine(IBus.Engine):
         if keyval in (IBus.KEY_Return, IBus.KEY_KP_Enter):
             if not self.buffer:
                 return False
-            self._commit_best_and_reset()
+            self._commit_raw_and_reset()
             return True
 
         if keyval == IBus.KEY_Escape:
