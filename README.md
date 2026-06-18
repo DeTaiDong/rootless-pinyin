@@ -5,7 +5,7 @@
 适合学校机房、实验室、公司电脑、远程 Linux 桌面等没有 root 权限的环境。前提是系统已经有 `libpinyin` / `libpinyin-data`。
 
 ## 快速安装
-
+直接复制指令在termini回车即可快速安装
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash
 ```
