@@ -53,9 +53,44 @@ python3 -c "import gi; gi.require_version('IBus','1.0'); from gi.repository impo
 这条命令没有输出、没有报错就是正常。如果报错，说明系统缺少
 `python3-gobject` 或 IBus typelib，这部分通常需要管理员安装。
 
-### 安装步骤
+### 推荐安装方式：一条命令安装
 
-克隆项目：
+如果机器可以访问 GitHub，可以直接在终端运行：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash
+```
+
+这条命令会自动下载完整项目到：
+
+```text
+~/.local/share/rootless-pinyin-src
+```
+
+然后执行项目里的 `install.sh` 完成安装。也就是说，用户不需要手动
+`git clone`，但本地仍然会保留一份源码，方便以后更新或卸载。
+
+如果你的机器没有 `curl`，但有 `wget`，可以用：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash
+```
+
+更新到最新版可以再次运行：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --update
+```
+
+通过 bootstrap 卸载：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --uninstall
+```
+
+### 手动安装方式：克隆后安装
+
+如果你更想自己管理源码目录，可以手动克隆项目：
 
 ```bash
 git clone https://github.com/DeTaiDong/rootless-pinyin.git
@@ -70,6 +105,8 @@ cd rootless-pinyin
 
 安装脚本会做这些事：
 
+- 如果使用 `bootstrap.sh`，先把项目下载或更新到
+  `~/.local/share/rootless-pinyin-src`
 - 把 `engine.py` 和 `pinyin_lib.py` 复制到
   `~/.local/share/ibus-pypinyin/`
 - 生成 IBus component 文件：
@@ -132,7 +169,13 @@ woshizhongguoren
 
 ### 卸载
 
-在项目目录里运行：
+如果你是用一条命令安装的，可以运行：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --uninstall
+```
+
+如果你已经在项目目录里，也可以直接运行：
 
 ```bash
 ./uninstall.sh
@@ -207,7 +250,35 @@ LIBPINYIN_DATA_DIR=/path/to/libpinyin/data \
 ./install.sh
 ```
 
-### Install
+### Recommended Install
+
+If the machine can access GitHub, run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash
+```
+
+This downloads the full project into:
+
+```text
+~/.local/share/rootless-pinyin-src
+```
+
+and then runs `install.sh`.
+
+To update:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --update
+```
+
+To uninstall through bootstrap:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --uninstall
+```
+
+### Manual Install
 
 ```bash
 git clone https://github.com/DeTaiDong/rootless-pinyin.git
@@ -229,6 +300,8 @@ and `Esc` to cancel.
 
 ### What the Installer Does
 
+- Downloads or updates the project at `~/.local/share/rootless-pinyin-src`
+  when using `bootstrap.sh`
 - Copies engine files to `~/.local/share/ibus-pypinyin/`
 - Registers an IBus component at `~/.local/share/ibus/component/pypinyin.xml`
 - Writes `~/.config/environment.d/ibus-pypinyin.conf`
@@ -237,6 +310,14 @@ and `Esc` to cancel.
 - Adds `('ibus', 'pypinyin')` to GNOME input sources when possible
 
 ### Uninstall
+
+With bootstrap:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/bootstrap.sh | bash -s -- --uninstall
+```
+
+From a local checkout:
 
 ```bash
 ./uninstall.sh
