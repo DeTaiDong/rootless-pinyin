@@ -17,6 +17,22 @@ from pinyin_lib import PinyinSession
 
 USER_DATA_DIR = os.path.join(GLib.get_user_cache_dir(), "ibus-pypinyin")
 
+CHINESE_PUNCTUATION = {
+    ",": "，",
+    ".": "。",
+    "?": "？",
+    "!": "！",
+    ":": "：",
+    ";": "；",
+    "(": "（",
+    ")": "）",
+    "[": "【",
+    "]": "】",
+    "<": "《",
+    ">": "》",
+    "\\": "、",
+}
+
 
 class PyPinyinEngine(IBus.Engine):
     __gtype_name__ = "PyPinyinEngine"
@@ -27,9 +43,50 @@ class PyPinyinEngine(IBus.Engine):
         self.session = PinyinSession(USER_DATA_DIR)
         self.buffer = ""
         self.candidates = []
+        self.english_mode = False
+        self._status_timeout = 0
+        self._shift_pressed = False
+        self._shift_used = False
 
     def _is_letter(self, keyval):
         return (IBus.KEY_a <= keyval <= IBus.KEY_z) or (IBus.KEY_A <= keyval <= IBus.KEY_Z)
+
+    def _key_char(self, keyval):
+        if 0x20 <= keyval <= 0x7e:
+            return chr(keyval)
+        return ""
+
+    def _is_shift(self, keyval):
+        return keyval in (IBus.KEY_Shift_L, IBus.KEY_Shift_R)
+
+    def _is_pinyin_separator(self, keyval):
+        return self._key_char(keyval) == "'"
+
+    def _append_separator(self):
+        if not self.buffer or self.buffer.endswith("'"):
+            return False
+        self.buffer += "'"
+        self._refresh()
+        return True
+
+    def _flash_status(self, text):
+        if self._status_timeout:
+            GLib.source_remove(self._status_timeout)
+        self.update_auxiliary_text(IBus.Text.new_from_string(text), True)
+        self._status_timeout = GLib.timeout_add(1200, self._hide_status)
+
+    def _hide_status(self):
+        self._status_timeout = 0
+        if not self.buffer:
+            self.hide_auxiliary_text()
+        return False
+
+    def _toggle_english_mode(self):
+        if self.buffer:
+            self._commit_best_and_reset()
+        self.english_mode = not self.english_mode
+        self._clear_ui()
+        self._flash_status("英文模式" if self.english_mode else "拼音模式")
 
     def _refresh(self):
         self.session.parse(self.buffer)
@@ -37,15 +94,23 @@ class PyPinyinEngine(IBus.Engine):
         self.candidates = [c for c in self.session.candidates(0, limit=9) if c[0] != sentence][:8]
 
         table = IBus.LookupTable.new(9, 0, True, True)
+        table.set_cursor_visible(False)
+        for label in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
+            table.append_label(IBus.Text.new_from_string(label))
         table.append_candidate(IBus.Text.new_from_string(sentence))
         for text, _ptr in self.candidates:
             table.append_candidate(IBus.Text.new_from_string(text))
         self.update_lookup_table(table, True)
 
         self.update_preedit_text(IBus.Text.new_from_string(self.buffer), len(self.buffer), True)
-        self.update_auxiliary_text(IBus.Text.new_from_string(sentence), True)
+        self.update_auxiliary_text(
+            IBus.Text.new_from_string("%s  →  %s" % (self.buffer, sentence)), True
+        )
 
     def _clear_ui(self):
+        if self._status_timeout:
+            GLib.source_remove(self._status_timeout)
+            self._status_timeout = 0
         self.hide_preedit_text()
         self.hide_lookup_table()
         self.hide_auxiliary_text()
@@ -83,7 +148,26 @@ class PyPinyinEngine(IBus.Engine):
             self._clear_ui()
 
     def do_process_key_event(self, keyval, keycode, state):
+        if self._is_shift(keyval):
+            if state & IBus.ModifierType.RELEASE_MASK:
+                should_toggle = self._shift_pressed and not self._shift_used
+                self._shift_pressed = False
+                self._shift_used = False
+                if should_toggle:
+                    self._toggle_english_mode()
+                    return True
+                return False
+            self._shift_pressed = True
+            self._shift_used = False
+            return False
+
         if state & IBus.ModifierType.RELEASE_MASK:
+            return False
+
+        if self._shift_pressed and (state & IBus.ModifierType.SHIFT_MASK):
+            self._shift_used = True
+
+        if self.english_mode:
             return False
 
         if state & (IBus.ModifierType.CONTROL_MASK | IBus.ModifierType.MOD1_MASK
@@ -96,6 +180,9 @@ class PyPinyinEngine(IBus.Engine):
             self.buffer += chr(keyval).lower()
             self._refresh()
             return True
+
+        if self._is_pinyin_separator(keyval):
+            return self._append_separator()
 
         if keyval == IBus.KEY_BackSpace:
             if not self.buffer:
@@ -137,6 +224,11 @@ class PyPinyinEngine(IBus.Engine):
 
         if self.buffer:
             self._commit_best_and_reset()
+
+        char = self._key_char(keyval)
+        if char in CHINESE_PUNCTUATION:
+            self._commit(CHINESE_PUNCTUATION[char])
+            return True
         return False
 
     def do_focus_out(self):

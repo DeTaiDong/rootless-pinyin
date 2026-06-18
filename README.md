@@ -40,6 +40,9 @@ Settings -> Keyboard -> Input Sources -> + -> Chinese -> Pinyin (libpinyin, no-r
 
 - 输入 `nihao`，按 `Space` 或 `Enter` 上屏。
 - 按数字键 `1` 到 `9` 选候选词。
+- 轻按 `Shift` 在拼音模式和英文模式之间切换。
+- 拼音里可以用 `'` 分隔音节，例如 `xi'an`。
+- 中文模式下会自动输出常用中文标点，例如 `，。？！；：`。
 - 按 `Backspace` 删除拼音。
 - 按 `Esc` 取消输入。
 
@@ -97,7 +100,8 @@ curl -fsSL https://raw.githubusercontent.com/DeTaiDong/rootless-pinyin/main/boot
 ```
 
 Use `Super+Space` to switch to **Pinyin (libpinyin, no-root)**. If it does not
-appear immediately, log out and log back in once.
+appear immediately, log out and log back in once. Tap `Shift` to switch between
+pinyin mode and direct English input.
 
 Update:
 
