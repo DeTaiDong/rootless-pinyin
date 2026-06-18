@@ -140,6 +140,7 @@ class PinyinSession(object):
             raise RuntimeError("pinyin_alloc_instance failed")
 
     def parse(self, raw_pinyin):
+        _lib.pinyin_reset(self._instance)
         n = _lib.pinyin_parse_more_full_pinyins(self._instance, raw_pinyin.encode("ascii"))
         _lib.pinyin_guess_sentence(self._instance)
         return n

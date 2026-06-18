@@ -34,7 +34,7 @@ fi
 
 echo "==> Installing engine files to $DEST"
 mkdir -p "$DEST"
-cp "$SCRIPT_DIR/src/engine.py" "$SCRIPT_DIR/src/pinyin_lib.py" "$DEST/"
+cp "$SCRIPT_DIR/src/engine.py" "$SCRIPT_DIR/src/pinyin_lib.py" "$SCRIPT_DIR/src/config.py" "$DEST/"
 chmod +x "$DEST/engine.py"
 
 echo "==> Registering IBus component"

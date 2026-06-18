@@ -13,11 +13,10 @@ import gi
 gi.require_version("IBus", "1.0")
 from gi.repository import GLib, IBus
 
+from config import UserConfig, fuzzy_variants
 from pinyin_lib import PinyinSession
 
 USER_DATA_DIR = os.path.join(GLib.get_user_cache_dir(), "ibus-pypinyin")
-CANDIDATE_PAGE_SIZE = 9
-MAX_CANDIDATES = 90
 
 CHINESE_PUNCTUATION = {
     ",": "，",
@@ -42,8 +41,10 @@ class PyPinyinEngine(IBus.Engine):
     def __init__(self):
         super(PyPinyinEngine, self).__init__()
         os.makedirs(USER_DATA_DIR, exist_ok=True)
+        self.config = UserConfig.load()
         self.session = PinyinSession(USER_DATA_DIR)
         self.buffer = ""
+        self.primary_candidate = None
         self.candidates = []
         self.page = 0
         self.english_mode = False
@@ -92,24 +93,75 @@ class PyPinyinEngine(IBus.Engine):
         self._clear_ui()
         self._flash_status("英文模式" if self.english_mode else "拼音模式")
 
+    def _phrase_candidates(self):
+        out = []
+        for key, text in self.config.phrases.items():
+            if self.buffer == key:
+                consume = len(key)
+            elif self.buffer.startswith(key + "'"):
+                consume = len(key) + 1
+            else:
+                continue
+            out.append({"text": text, "ptr": None, "consume": consume, "train": False})
+        return out
+
+    def _fuzzy_candidates(self, sentence):
+        if not self.config.fuzzy_enabled:
+            return []
+
+        out = []
+        seen = {sentence}
+        for variant in fuzzy_variants(
+            self.buffer, self.config.fuzzy_pairs, self.config.max_fuzzy_variants
+        ):
+            self.session.parse(variant)
+            best = self.session.best_sentence()
+            if best and best not in seen:
+                seen.add(best)
+                out.append({"text": best, "ptr": None, "consume": len(self.buffer), "train": False})
+            for text, _ptr in self.session.candidates(0, limit=5):
+                if text and text not in seen:
+                    seen.add(text)
+                    out.append({"text": text, "ptr": None, "consume": len(self.buffer), "train": False})
+                if len(out) >= 12:
+                    return out
+        return out
+
     def _refresh(self):
         self.session.parse(self.buffer)
-        sentence = self.session.best_sentence() or self.buffer
-        self.candidates = [
-            c for c in self.session.candidates(0, limit=MAX_CANDIDATES)
-            if c[0] != sentence
+        sentence_text = self.session.best_sentence() or self.buffer
+        sentence = {
+            "text": sentence_text,
+            "ptr": None,
+            "consume": len(self.buffer),
+            "train": True,
+        }
+        phrase_candidates = self._phrase_candidates()
+        exact_phrases = [c for c in phrase_candidates if c["consume"] >= len(self.buffer)]
+        prefix_phrases = [c for c in phrase_candidates if c["consume"] < len(self.buffer)]
+
+        self.primary_candidate = exact_phrases[0] if exact_phrases else sentence
+        fuzzy = self._fuzzy_candidates(sentence_text)
+        self.session.parse(self.buffer)
+        normal = [
+            {"text": text, "ptr": ptr, "consume": None, "train": True}
+            for text, ptr in self.session.candidates(0, limit=self.config.max_candidates)
+            if text != sentence_text and text != self.primary_candidate["text"]
         ]
+        remaining_exact = exact_phrases[1:]
+        sentence_fallback = [] if self.primary_candidate is sentence else [sentence]
+        self.candidates = remaining_exact + prefix_phrases + sentence_fallback + normal + fuzzy
         self.page = min(self.page, self._last_page())
-        self._update_candidates(sentence)
+        self._update_candidates(self.primary_candidate["text"])
 
     def _last_page(self):
         total = 1 + len(self.candidates)
-        return max(0, (total - 1) // CANDIDATE_PAGE_SIZE)
+        return max(0, (total - 1) // self.config.page_size)
 
     def _candidate_for_display_index(self, idx):
-        absolute = self.page * CANDIDATE_PAGE_SIZE + idx
+        absolute = self.page * self.config.page_size + idx
         if absolute == 0:
-            return self.session.best_sentence() or self.buffer, None
+            return self.primary_candidate
         real_idx = absolute - 1
         if real_idx >= len(self.candidates):
             return None
@@ -118,13 +170,13 @@ class PyPinyinEngine(IBus.Engine):
     def _update_candidates(self, sentence=None):
         sentence = sentence or self.session.best_sentence() or self.buffer
 
-        table = IBus.LookupTable.new(CANDIDATE_PAGE_SIZE, 0, True, True)
+        table = IBus.LookupTable.new(self.config.page_size, 0, True, True)
         table.set_cursor_visible(False)
-        for label in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
+        for label in ("1", "2", "3", "4", "5", "6", "7", "8", "9")[:self.config.page_size]:
             table.append_label(IBus.Text.new_from_string(label))
 
-        start = self.page * CANDIDATE_PAGE_SIZE
-        end = start + CANDIDATE_PAGE_SIZE
+        start = self.page * self.config.page_size
+        end = start + self.config.page_size
         for absolute in range(start, end):
             if absolute == 0:
                 text = sentence
@@ -132,7 +184,7 @@ class PyPinyinEngine(IBus.Engine):
                 real_idx = absolute - 1
                 if real_idx >= len(self.candidates):
                     break
-                text, _ptr = self.candidates[real_idx]
+                text = self.candidates[real_idx]["text"]
             table.append_candidate(IBus.Text.new_from_string(text))
         self.update_lookup_table(table, True)
 
@@ -152,6 +204,7 @@ class PyPinyinEngine(IBus.Engine):
         self.hide_preedit_text()
         self.hide_lookup_table()
         self.hide_auxiliary_text()
+        self.primary_candidate = None
         self.candidates = []
         self.page = 0
 
@@ -165,10 +218,13 @@ class PyPinyinEngine(IBus.Engine):
         self.commit_text(IBus.Text.new_from_string(text))
 
     def _commit_best_and_reset(self):
-        sentence = self.session.best_sentence() or self.buffer
-        self._commit(sentence)
-        self.session.train()
-        self._reset_state()
+        selected = self.primary_candidate or {
+            "text": self.session.best_sentence() or self.buffer,
+            "ptr": None,
+            "consume": len(self.buffer),
+            "train": True,
+        }
+        self._commit_candidate(selected)
 
     def _commit_raw_and_reset(self):
         self._commit(self.buffer)
@@ -178,13 +234,18 @@ class PyPinyinEngine(IBus.Engine):
         selected = self._candidate_for_display_index(idx)
         if not selected:
             return
-        text, ptr = selected
-        if ptr is None:
-            self._commit_best_and_reset()
-            return
-        new_offset = self.session.choose(0, ptr)
+        self._commit_candidate(selected)
+
+    def _commit_candidate(self, selected):
+        text = selected["text"]
+        ptr = selected["ptr"]
+        consume = selected["consume"]
+        if ptr is not None:
+            consume = self.session.choose(0, ptr)
+        elif selected["train"]:
+            self.session.train()
         self._commit(text)
-        self.buffer = self.buffer[new_offset:]
+        self.buffer = self.buffer[consume or len(self.buffer):]
         self.session.reset()
         self.page = 0
         if self.buffer:
@@ -207,7 +268,7 @@ class PyPinyinEngine(IBus.Engine):
         return True
 
     def do_process_key_event(self, keyval, keycode, state):
-        if self._is_shift(keyval):
+        if self.config.shift_toggle_english and self._is_shift(keyval):
             if state & IBus.ModifierType.RELEASE_MASK:
                 should_toggle = self._shift_pressed and not self._shift_used
                 self._shift_pressed = False
@@ -265,7 +326,10 @@ class PyPinyinEngine(IBus.Engine):
         if keyval in (IBus.KEY_Return, IBus.KEY_KP_Enter):
             if not self.buffer:
                 return False
-            self._commit_raw_and_reset()
+            if self.config.enter_commits_raw:
+                self._commit_raw_and_reset()
+            else:
+                self._commit_best_and_reset()
             return True
 
         if keyval == IBus.KEY_Escape:
@@ -277,7 +341,9 @@ class PyPinyinEngine(IBus.Engine):
         if IBus.KEY_1 <= keyval <= IBus.KEY_9:
             if not self.buffer:
                 return False
-            self._select_candidate(keyval - IBus.KEY_1)
+            idx = keyval - IBus.KEY_1
+            if idx < self.config.page_size:
+                self._select_candidate(idx)
             return True
 
         if keyval in (
@@ -296,7 +362,7 @@ class PyPinyinEngine(IBus.Engine):
             self._commit_best_and_reset()
 
         char = self._key_char(keyval)
-        if char in CHINESE_PUNCTUATION:
+        if self.config.chinese_punctuation and char in CHINESE_PUNCTUATION:
             self._commit(CHINESE_PUNCTUATION[char])
             return True
         return False

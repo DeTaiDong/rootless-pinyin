@@ -48,6 +48,33 @@ Settings -> Keyboard -> Input Sources -> + -> Chinese -> Pinyin (libpinyin, no-r
 - 按 `Backspace` 删除拼音。
 - 按 `Esc` 取消输入。
 
+### 配置和词库
+
+第一次启动后会自动生成配置文件：
+
+```text
+~/.config/rootless-pinyin/config.ini
+```
+
+可以在 `[phrases]` 里加自定义短语：
+
+```ini
+[phrases]
+email = your.name@example.com
+addr = your address
+xiexie = 谢谢
+```
+
+也可以开启模糊音：
+
+```ini
+[fuzzy]
+enabled = true
+pairs = z_zh,c_ch,s_sh,l_n,f_h,en_eng,in_ing
+```
+
+改完配置后，切换一下输入法或重新运行安装命令刷新 IBus。
+
 ### 更新
 
 ```bash
