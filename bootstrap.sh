@@ -138,7 +138,8 @@ run_configure_gui() {
 run_panel() {
     ensure_source
     if [ -x "$INSTALL_DIR/src/panel.py" ]; then
-        python3 "$INSTALL_DIR/src/panel.py"
+        nohup python3 "$INSTALL_DIR/src/panel.py" >/dev/null 2>&1 &
+        echo "rootless-pinyin panel started."
     else
         echo "ERROR: panel.py not found at $INSTALL_DIR." >&2
         exit 1

@@ -40,19 +40,20 @@ Pinyin (libpinyin, no-root)
 打开图形设置窗口：
 
 ```bash
-rootless-pinyin-config
-```
-
-如果命令找不到：
-
-```bash
 ~/.local/bin/rootless-pinyin-config
 ```
 
-如果想让短命令永久可用，可以把下面这行加入 `~/.bashrc`：
+如果想直接输入短命令，先把 `~/.local/bin` 加到 PATH：
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+之后可以直接运行：
+
+```bash
+rootless-pinyin-config
 ```
 
 设置窗口可以调整：
@@ -85,15 +86,16 @@ rootless-pinyin-config --cli phrase remove email
 ## 可选悬浮框
 
 ```bash
-rootless-pinyin-panel
+~/.local/bin/rootless-pinyin-panel
 ```
 
 它会显示一个小窗口，点击“设置”可以打开配置页。这个功能默认不会自启动。
+命令会在后台启动，关闭终端后悬浮框仍然会保留。
 
-如果命令找不到：
+如果已经把 `~/.local/bin` 加到 PATH，也可以直接运行：
 
 ```bash
-~/.local/bin/rootless-pinyin-panel
+rootless-pinyin-panel
 ```
 
 ## 更新
